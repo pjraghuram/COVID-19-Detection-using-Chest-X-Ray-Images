@@ -1,10 +1,24 @@
-tensorflow>=2.8.0
-scikit-learn>=1.0.0
-imbalanced-learn>=0.8.0
+# COVID-19 X-Ray Classification - Dependencies
+# Requirements for Streamlit Cloud deployment (Python 3.13.5 compatible)
+
+# Core ML and Data Science
+tensorflow==2.19.0
+numpy>=1.21.0,<2.0.0
+pandas>=1.3.0,<3.0.0
+scikit-learn>=1.0.0,<2.0.0
+Pillow>=8.0.0,<11.0.0
+
+# Web Framework
+streamlit>=1.28.0
+
+# Visualization
+plotly>=5.0.0
 matplotlib>=3.5.0
 seaborn>=0.11.0
-pandas>=1.3.0
-numpy>=1.21.0
-Pillow>=8.0.0
+
+# Image Processing
+opencv-python-headless>=4.5.0
+
+# Data Handling
+imbalanced-learn>=0.8.0
 tqdm>=4.62.0
-streamlit>=1.10.0

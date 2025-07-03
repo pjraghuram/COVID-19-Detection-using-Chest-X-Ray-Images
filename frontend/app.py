@@ -300,7 +300,7 @@ def main():
                 """)
             
             # Additional metrics
-            st.markdown("### 📊 Model Performance Metrics")
+            st.markdown("### Model Performance Metrics")
             
             metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
             
