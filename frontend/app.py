@@ -1,23 +1,20 @@
 #!/usr/bin/env python3
 """
-COVID-19 X-Ray Classification - Streamlit Frontend
-Professional web interface for X-ray image classification
+COVID-19 X-Ray Classification - Demo Version for Streamlit Cloud
+Works without TensorFlow - uses mock predictions with realistic behavior
 """
 
 import streamlit as st
 import numpy as np
 import pandas as pd
 from PIL import Image, ImageOps
-import tensorflow as tf
 import io
 import sys
 from pathlib import Path
 import plotly.graph_objects as go
 import plotly.express as px
-
-# Add src to Python path
-project_root = Path(__file__).parent.parent
-sys.path.append(str(project_root / 'src'))
+import time
+import random
 
 # Page configuration
 st.set_page_config(
@@ -68,82 +65,71 @@ st.markdown("""
         padding: 1rem;
         margin: 1rem 0;
     }
+    .demo-banner {
+        background-color: #e7f3ff;
+        border: 2px solid #0066cc;
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 1rem 0;
+        text-align: center;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-@st.cache_resource
-def load_model():
-    """Load the trained COVID-19 classification model"""
-    try:
-        # Try to load the best model first
-        model_paths = [
-            project_root / 'saved_models' / 'best_model.h5',
-            project_root / 'saved_models' / 'covid_model.h5'
-        ]
-        
-        for model_path in model_paths:
-            if model_path.exists():
-                model = tf.keras.models.load_model(str(model_path))
-                return model, str(model_path)
-        
-        return None, None
-    except Exception as e:
-        st.error(f"Error loading model: {e}")
-        return None, None
+def analyze_image_features(image):
+    """
+    Analyze image features to make realistic predictions
+    This simulates what a real model would do
+    """
+    # Convert to grayscale and resize
+    if image.mode != 'L':
+        image = ImageOps.grayscale(image)
+    
+    image = image.resize((64, 64))
+    img_array = np.asarray(image)
+    
+    # Calculate some basic image statistics
+    mean_intensity = np.mean(img_array)
+    std_intensity = np.std(img_array)
+    contrast = np.max(img_array) - np.min(img_array)
+    
+    # Simulate model behavior based on image characteristics
+    # This creates realistic-looking predictions
+    
+    # Base probability influenced by image characteristics
+    base_prob = 0.3 + (mean_intensity / 255.0) * 0.4
+    
+    # Add some randomness but keep it consistent for same image
+    random.seed(int(mean_intensity + std_intensity))
+    noise = random.uniform(-0.2, 0.2)
+    
+    probability = max(0.1, min(0.9, base_prob + noise))
+    
+    return probability
 
-def preprocess_image(image, target_size=(64, 64)):
+def make_demo_prediction(image):
     """
-    Preprocess uploaded image for model prediction
+    Make a demo prediction that looks realistic
     """
-    try:
-        # Convert to grayscale
-        if image.mode != 'L':
-            image = ImageOps.grayscale(image)
-        
-        # Resize to model input size
-        image = image.resize(target_size)
-        
-        # Convert to numpy array
-        img_array = np.asarray(image)
-        
-        # Normalize pixel values
-        img_array = img_array / 255.0
-        
-        # Reshape for model input (batch_size, height, width, channels)
-        img_array = img_array.reshape(1, target_size[0], target_size[1], 1)
-        
-        return img_array
-    except Exception as e:
-        st.error(f"Error preprocessing image: {e}")
-        return None
-
-def make_prediction(model, processed_image):
-    """
-    Make prediction using the loaded model
-    """
-    try:
-        # Get prediction probability
-        prediction_prob = model.predict(processed_image, verbose=0)[0][0]
-        
-        # Determine class and confidence
-        if prediction_prob > 0.5:
-            prediction_class = "COVID-19 Positive"
-            confidence = prediction_prob
-            is_covid = True
-        else:
-            prediction_class = "COVID-19 Negative"
-            confidence = 1 - prediction_prob
-            is_covid = False
-        
-        return {
-            'class': prediction_class,
-            'confidence': confidence,
-            'probability': prediction_prob,
-            'is_covid': is_covid
-        }
-    except Exception as e:
-        st.error(f"Error making prediction: {e}")
-        return None
+    # Analyze image features
+    probability = analyze_image_features(image)
+    
+    # Determine class and confidence
+    if probability > 0.5:
+        prediction_class = "COVID-19 Positive"
+        confidence = probability
+        is_covid = True
+    else:
+        prediction_class = "COVID-19 Negative"
+        confidence = 1 - probability
+        is_covid = False
+    
+    return {
+        'class': prediction_class,
+        'confidence': confidence,
+        'probability': probability,
+        'is_covid': is_covid
+    }
 
 def create_confidence_chart(confidence, is_covid):
     """
@@ -174,6 +160,7 @@ def display_model_info():
     Display information about the model
     """
     st.sidebar.markdown("### 📊 Model Information")
+    st.sidebar.markdown("**🚨 DEMO MODE**")
     
     model_info = {
         "Architecture": "VGG16 + Custom Classifier",
@@ -187,12 +174,43 @@ def display_model_info():
     
     for key, value in model_info.items():
         st.sidebar.metric(key, value)
+    
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🔧 Demo Features")
+    st.sidebar.markdown("""
+    - ✅ Image upload & analysis
+    - ✅ Realistic predictions
+    - ✅ Confidence visualization
+    - ✅ Medical interpretation
+    - ⚠️ Demo predictions only
+    """)
 
+def display_disclaimer():
+    """
+    Display medical disclaimer
+    """
+    st.markdown("""
+    <div class="warning-box">
+        <h4>⚠️ Medical Disclaimer</h4>
+        <p>This tool is for <strong>research and educational purposes only</strong>. 
+        It should <strong>NOT</strong> be used as a substitute for professional medical diagnosis. 
+        Always consult with qualified healthcare professionals for medical advice.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 def main():
     """
     Main Streamlit application
     """
+    
+    # Demo banner
+    st.markdown("""
+    <div class="demo-banner">
+        <h3>🚀 COVID-19 X-Ray Classifier - DEMO VERSION</h3>
+        <p>This is a demonstration version running on Streamlit Cloud</p>
+        <p><strong>Note:</strong> Predictions are generated using image analysis simulation, not the actual trained model</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Header
     st.markdown("""
@@ -201,16 +219,6 @@ def main():
         <p>AI-Powered Chest X-Ray Analysis for COVID-19 Screening</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Load model
-    with st.spinner("Loading AI model..."):
-        model, model_path = load_model()
-    
-    if model is None:
-        st.error("❌ Failed to load the trained model. Please ensure the model files exist in 'saved_models/' directory.")
-        st.stop()
-    
-    st.success(f"✅ Model loaded successfully from: {Path(model_path).name}")
     
     # Sidebar
     display_model_info()
@@ -245,18 +253,16 @@ def main():
             # Prediction button
             if st.button("🔍 Analyze X-Ray", type="primary", use_container_width=True):
                 with st.spinner("Analyzing image..."):
-                    # Preprocess image
-                    processed_image = preprocess_image(image)
+                    # Simulate processing time
+                    time.sleep(2)
                     
-                    if processed_image is not None:
-                        # Make prediction
-                        result = make_prediction(model, processed_image)
-                        
-                        if result is not None:
-                            # Store result in session state for display in col2
-                            st.session_state['prediction_result'] = result
-                            st.session_state['original_image'] = image
-                            st.rerun()
+                    # Make demo prediction
+                    result = make_demo_prediction(image)
+                    
+                    # Store result in session state for display in col2
+                    st.session_state['prediction_result'] = result
+                    st.session_state['original_image'] = image
+                    st.rerun()
     
     with col2:
         st.markdown("### 🎯 Analysis Results")
@@ -264,12 +270,15 @@ def main():
         if 'prediction_result' in st.session_state:
             result = st.session_state['prediction_result']
             
+            # Demo warning
+            st.warning("🚨 **DEMO MODE**: This is a simulated prediction for demonstration purposes")
+            
             # Prediction result box
             box_class = "covid-positive" if result['is_covid'] else "covid-negative"
             
             st.markdown(f"""
             <div class="prediction-box {box_class}">
-                <h3>🏥 Diagnosis: {result['class']}</h3>
+                <h3>🏥 Demo Prediction: {result['class']}</h3>
                 <p><strong>Confidence:</strong> {result['confidence']:.1%}</p>
                 <p><strong>Raw Probability:</strong> {result['probability']:.4f}</p>
             </div>
@@ -284,23 +293,23 @@ def main():
             
             if result['is_covid']:
                 st.markdown("""
-                🔴 **COVID-19 Positive Indication**
-                - The model suggests potential COVID-19 patterns in the X-ray
-                - Recommend immediate consultation with healthcare professionals
+                🔴 **COVID-19 Positive Indication (Demo)**
+                - The analysis suggests potential COVID-19 patterns
+                - This is a simulated result for demonstration
+                - In real use: Consult healthcare professionals immediately
                 - Consider additional diagnostic tests (RT-PCR, CT scan)
-                - Follow isolation protocols as advised by medical professionals
                 """)
             else:
                 st.markdown("""
-                🟢 **COVID-19 Negative Indication**
-                - The model suggests no obvious COVID-19 patterns detected
-                - This does not rule out other respiratory conditions
-                - Clinical correlation is always recommended
-                - Consult healthcare professionals for complete evaluation
+                🟢 **COVID-19 Negative Indication (Demo)**
+                - The analysis suggests no obvious COVID-19 patterns
+                - This is a simulated result for demonstration
+                - In real use: Does not rule out other conditions
+                - Always consult healthcare professionals
                 """)
             
             # Additional metrics
-            st.markdown("### Model Performance Metrics")
+            st.markdown("### 📊 Real Model Performance")
             
             metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
             
@@ -316,26 +325,56 @@ def main():
         else:
             st.info("👆 Upload an X-ray image and click 'Analyze' to see results here.")
             
-            # Sample images section
-            st.markdown("### 🖼️ Sample X-Ray Categories")
+            # Sample information
+            st.markdown("### 🖼️ About This Demo")
+            st.markdown("""
+            This demo version:
+            - ✅ **Processes real images** you upload
+            - ✅ **Analyzes image characteristics** (intensity, contrast, etc.)
+            - ✅ **Generates realistic predictions** based on image features
+            - ✅ **Shows the complete interface** of the real application
+            - ⚠️ **Uses simulation**, not the actual trained model
             
-            sample_info = {
-                "COVID-19": "Shows ground-glass opacities, consolidations",
-                "Normal": "Clear lung fields, normal cardiac silhouette",
-                "Viral Pneumonia": "Bilateral infiltrates, inflammatory changes",
-                "Lung Opacity": "Various opacification patterns"
-            }
-            
-            for condition, description in sample_info.items():
-                st.markdown(f"**{condition}:** {description}")
+            **Real Model Features:**
+            - Trained on 21,000+ chest X-ray images
+            - 91.97% accuracy on test data
+            - VGG16 architecture with custom classifier
+            - Balanced dataset with SMOTE techniques
+            """)
     
+    # How to get real model section
+    st.markdown("---")
+    st.markdown("### 🔧 How to Run the Real Model")
+    
+    real_model_col1, real_model_col2 = st.columns(2)
+    
+    with real_model_col1:
+        st.markdown("""
+        **Option 1: Local Development**
+        1. Clone the repository
+        2. Install dependencies: `pip install -r requirements.txt`
+        3. Run locally: `streamlit run frontend/app.py`
+        4. Uses the actual trained model files
+        """)
+    
+    with real_model_col2:
+        st.markdown("""
+        **Option 2: Cloud Deployment**
+        1. Upload model to cloud storage (Google Drive, S3, etc.)
+        2. Update model loading URLs in code
+        3. Deploy to Streamlit Cloud with TensorFlow
+        4. Full functionality with real predictions
+        """)
+    
+    # Disclaimer
+    display_disclaimer()
     
     # Footer
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #666;">
-        <p>Built with ❤️ using Streamlit and TensorFlow | 
-        Model Accuracy: 91.97% | 
+        <p>🚀 <strong>Demo Version</strong> - Built with ❤️ using Streamlit | 
+        Real Model Accuracy: 91.97% | 
         For Educational Use Only</p>
     </div>
     """, unsafe_allow_html=True)
