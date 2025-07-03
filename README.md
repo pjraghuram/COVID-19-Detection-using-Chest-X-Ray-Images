@@ -8,7 +8,7 @@ This project uses a VGG16-based deep learning model to classify chest X-ray imag
 
 ## 🚀 Live Demo
 
-**[Try the app here](https://your-app-name.streamlit.app)** *(Update this link after deployment)*
+**[Try the app here](https://covid-19-detection-using-chest-x-ray-images.streamlit.app/)** *(Update this link after deployment)*
 
 ## 📊 Model Performance
 
@@ -42,7 +42,7 @@ The model was trained on the COVID-19 Radiography Database containing:
 - **Visualization**: Plotly, Matplotlib
 - **Deployment**: Streamlit Cloud
 
-## 📱 Features
+## Features
 
 - 📤 **Image Upload**: Drag & drop X-ray images
 - 🎯 **AI Analysis**: Real-time COVID-19 detection
@@ -50,7 +50,7 @@ The model was trained on the COVID-19 Radiography Database containing:
 - 🏥 **Medical Guidance**: Interpretation and recommendations
 - 📈 **Performance Metrics**: Model accuracy statistics
 
-## 🚀 Local Installation
+## Local Installation
 
 1. **Clone the repository**
    ```bash
@@ -68,7 +68,7 @@ The model was trained on the COVID-19 Radiography Database containing:
    streamlit run frontend/app.py
    ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 covid19-xray-classifier/
@@ -84,31 +84,19 @@ covid19-xray-classifier/
 └── .gitignore            # Git ignore rules
 ```
 
-## 🎓 Educational Use
 
-This project demonstrates:
+## This project demonstrates:
 - Transfer learning with VGG16
 - Medical image classification
 - Class imbalance handling with SMOTE
 - Model evaluation metrics
 - Web deployment with Streamlit
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Submit a pull request
 
-## 📞 Contact
-
-- **Author**: [Jaya Raghu Ram Penugonda]
-- **Email**: [penugonda.j@northeastern.edu]
-- **LinkedIn**: [Your LinkedIn Profile]
-
-## 🏆 Acknowledgments
-
-- COVID-19 Radiography Database contributors
-- TensorFlow and Streamlit communities
-- Medical professionals who validated the approach
 

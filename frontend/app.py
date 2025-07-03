@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
 """
-COVID-19 X-Ray Classification - Demo Version for Streamlit Cloud
-Works without TensorFlow - uses mock predictions with realistic behavior
+COVID-19 X-Ray Classification - Uses Actual best_model.h5
+Simple and direct implementation
 """
 
 import streamlit as st
 import numpy as np
 import pandas as pd
 from PIL import Image, ImageOps
-import io
-import sys
+import tensorflow as tf
+import os
 from pathlib import Path
 import plotly.graph_objects as go
-import plotly.express as px
-import time
-import random
 
 # Page configuration
 st.set_page_config(
@@ -24,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# Custom CSS
 st.markdown("""
 <style>
     .main-header {
@@ -50,14 +47,6 @@ st.markdown("""
         border-color: #28a745;
         background-color: #d4edda;
     }
-    .confidence-bar {
-        height: 20px;
-        border-radius: 10px;
-        text-align: center;
-        line-height: 20px;
-        color: white;
-        font-weight: bold;
-    }
     .warning-box {
         background-color: #fff3cd;
         border: 1px solid #ffeaa7;
@@ -65,83 +54,89 @@ st.markdown("""
         padding: 1rem;
         margin: 1rem 0;
     }
-    .demo-banner {
-        background-color: #e7f3ff;
-        border: 2px solid #0066cc;
-        border-radius: 10px;
-        padding: 1rem;
-        margin: 1rem 0;
-        text-align: center;
-    }
 </style>
 """, unsafe_allow_html=True)
 
-def analyze_image_features(image):
+@st.cache_resource
+def load_model():
+    """Load the trained COVID-19 model from best_model.h5"""
+    
+    # Define possible paths for the model
+    possible_paths = [
+        "saved_models/best_model.h5",
+        "best_model.h5",
+        "../saved_models/best_model.h5",
+        "saved_models/covid_model.h5"
+    ]
+    
+    for model_path in possible_paths:
+        if os.path.exists(model_path):
+            try:
+                st.info(f"Loading model from: {model_path}")
+                model = tf.keras.models.load_model(model_path)
+                st.success("✅ Model loaded successfully!")
+                return model, model_path
+            except Exception as e:
+                st.error(f"Error loading model from {model_path}: {e}")
+    
+    st.error("❌ Could not find best_model.h5 file. Please ensure it's in the correct location.")
+    return None, None
+
+def preprocess_image(image):
     """
-    Analyze image features to make realistic predictions
-    This simulates what a real model would do
+    Preprocess image exactly as done during training
     """
-    # Convert to grayscale and resize
+    # Convert to grayscale
     if image.mode != 'L':
         image = ImageOps.grayscale(image)
     
+    # Resize to 64x64 (same as training)
     image = image.resize((64, 64))
+    
+    # Convert to numpy array
     img_array = np.asarray(image)
     
-    # Calculate some basic image statistics
-    mean_intensity = np.mean(img_array)
-    std_intensity = np.std(img_array)
-    contrast = np.max(img_array) - np.min(img_array)
+    # Normalize (divide by 255)
+    img_array = img_array / 255.0
     
-    # Simulate model behavior based on image characteristics
-    # This creates realistic-looking predictions
+    # Reshape for model input: (1, 64, 64, 1)
+    img_array = img_array.reshape(1, 64, 64, 1)
     
-    # Base probability influenced by image characteristics
-    base_prob = 0.3 + (mean_intensity / 255.0) * 0.4
-    
-    # Add some randomness but keep it consistent for same image
-    random.seed(int(mean_intensity + std_intensity))
-    noise = random.uniform(-0.2, 0.2)
-    
-    probability = max(0.1, min(0.9, base_prob + noise))
-    
-    return probability
+    return img_array
 
-def make_demo_prediction(image):
+def make_prediction(model, processed_image):
     """
-    Make a demo prediction that looks realistic
+    Make prediction using the loaded model
     """
-    # Analyze image features
-    probability = analyze_image_features(image)
+    # Get prediction probability
+    prediction_prob = model.predict(processed_image, verbose=0)[0][0]
     
-    # Determine class and confidence
-    if probability > 0.5:
+    # Determine class (threshold = 0.5)
+    if prediction_prob > 0.5:
         prediction_class = "COVID-19 Positive"
-        confidence = probability
+        confidence = prediction_prob
         is_covid = True
     else:
         prediction_class = "COVID-19 Negative"
-        confidence = 1 - probability
+        confidence = 1 - prediction_prob
         is_covid = False
     
     return {
         'class': prediction_class,
         'confidence': confidence,
-        'probability': probability,
+        'probability': prediction_prob,
         'is_covid': is_covid
     }
 
 def create_confidence_chart(confidence, is_covid):
-    """
-    Create a confidence visualization
-    """
-    colors = ['#dc3545' if is_covid else '#28a745']
+    """Create confidence visualization"""
+    color = '#dc3545' if is_covid else '#28a745'
     
     fig = go.Figure(go.Bar(
         x=[confidence],
         y=['Confidence'],
         orientation='h',
-        marker=dict(color=colors),
+        marker=dict(color=color),
         text=[f'{confidence:.1%}'],
         textposition='inside'
     ))
@@ -156,72 +151,46 @@ def create_confidence_chart(confidence, is_covid):
     return fig
 
 def display_model_info():
-    """
-    Display information about the model
-    """
+    """Display model information in sidebar"""
     st.sidebar.markdown("### 📊 Model Information")
-    st.sidebar.markdown("**🚨 DEMO MODE**")
     
-    model_info = {
+    model_metrics = {
         "Architecture": "VGG16 + Custom Classifier",
         "Input Size": "64×64 Grayscale",
         "Training Accuracy": "91.97%",
         "Precision": "71.69%",
         "Recall": "87.55%",
         "F1-Score": "78.83%",
-        "AUC-ROC": "96.69%"
+        "AUC-ROC": "96.69%",
+        "Specificity": "92.88%"
     }
     
-    for key, value in model_info.items():
-        st.sidebar.metric(key, value)
-    
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🔧 Demo Features")
-    st.sidebar.markdown("""
-    - ✅ Image upload & analysis
-    - ✅ Realistic predictions
-    - ✅ Confidence visualization
-    - ✅ Medical interpretation
-    - ⚠️ Demo predictions only
-    """)
-
-def display_disclaimer():
-    """
-    Display medical disclaimer
-    """
-    st.markdown("""
-    <div class="warning-box">
-        <h4>⚠️ Medical Disclaimer</h4>
-        <p>This tool is for <strong>research and educational purposes only</strong>. 
-        It should <strong>NOT</strong> be used as a substitute for professional medical diagnosis. 
-        Always consult with qualified healthcare professionals for medical advice.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    for metric, value in model_metrics.items():
+        st.sidebar.metric(metric, value)
 
 def main():
-    """
-    Main Streamlit application
-    """
-    
-    # Demo banner
-    st.markdown("""
-    <div class="demo-banner">
-        <h3>🚀 COVID-19 X-Ray Classifier - DEMO VERSION</h3>
-        <p>This is a demonstration version running on Streamlit Cloud</p>
-        <p><strong>Note:</strong> Predictions are generated using image analysis simulation, not the actual trained model</p>
-    </div>
-    """, unsafe_allow_html=True)
+    """Main application"""
     
     # Header
     st.markdown("""
     <div class="main-header">
         <h1>🫁 COVID-19 X-Ray Classifier</h1>
-        <p>AI-Powered Chest X-Ray Analysis for COVID-19 Screening</p>
+        <p>AI-Powered Chest X-Ray Analysis using Trained VGG16 Model</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Sidebar
+    # Load model
+    model, model_path = load_model()
+    
+    if model is None:
+        st.stop()
+    
+    # Display model info
     display_model_info()
+    
+    # Show model details
+    st.info(f"🤖 Using trained model: {model_path}")
+    st.info(f"📊 Model parameters: {model.count_params():,}")
     
     # Main content
     col1, col2 = st.columns([1, 1])
@@ -229,37 +198,36 @@ def main():
     with col1:
         st.markdown("### 📤 Upload X-Ray Image")
         
-        # File uploader
         uploaded_file = st.file_uploader(
             "Choose a chest X-ray image...",
             type=['png', 'jpg', 'jpeg'],
-            help="Upload a chest X-ray image in PNG, JPG, or JPEG format"
+            help="Upload a chest X-ray image for COVID-19 analysis"
         )
         
         if uploaded_file is not None:
-            # Display uploaded image
+            # Display image
             image = Image.open(uploaded_file)
             st.image(image, caption="Uploaded X-Ray Image", use_column_width=True)
             
-            # Image info
+            # Image details
             st.markdown(f"""
             **Image Details:**
             - Filename: {uploaded_file.name}
             - Size: {image.size[0]} × {image.size[1]} pixels
             - Mode: {image.mode}
-            - Format: {image.format}
             """)
             
-            # Prediction button
+            # Analyze button
             if st.button("🔍 Analyze X-Ray", type="primary", use_container_width=True):
-                with st.spinner("Analyzing image..."):
-                    # Simulate processing time
-                    time.sleep(2)
+                with st.spinner("Analyzing with trained model..."):
                     
-                    # Make demo prediction
-                    result = make_demo_prediction(image)
+                    # Preprocess image
+                    processed_image = preprocess_image(image)
                     
-                    # Store result in session state for display in col2
+                    # Make prediction
+                    result = make_prediction(model, processed_image)
+                    
+                    # Store in session state
                     st.session_state['prediction_result'] = result
                     st.session_state['original_image'] = image
                     st.rerun()
@@ -270,15 +238,15 @@ def main():
         if 'prediction_result' in st.session_state:
             result = st.session_state['prediction_result']
             
-            # Demo warning
-            st.warning("🚨 **DEMO MODE**: This is a simulated prediction for demonstration purposes")
+            # Model status
+            st.success("✅ **REAL MODEL**: Using your trained model with 91.97% accuracy")
             
-            # Prediction result box
+            # Prediction box
             box_class = "covid-positive" if result['is_covid'] else "covid-negative"
             
             st.markdown(f"""
             <div class="prediction-box {box_class}">
-                <h3>🏥 Demo Prediction: {result['class']}</h3>
+                <h3>🏥 Prediction: {result['class']}</h3>
                 <p><strong>Confidence:</strong> {result['confidence']:.1%}</p>
                 <p><strong>Raw Probability:</strong> {result['probability']:.4f}</p>
             </div>
@@ -289,93 +257,79 @@ def main():
             st.plotly_chart(confidence_chart, use_container_width=True)
             
             # Interpretation
-            st.markdown("### 📋 Interpretation")
+            st.markdown("### 📋 Clinical Interpretation")
             
             if result['is_covid']:
                 st.markdown("""
-                🔴 **COVID-19 Positive Indication (Demo)**
-                - The analysis suggests potential COVID-19 patterns
-                - This is a simulated result for demonstration
-                - In real use: Consult healthcare professionals immediately
-                - Consider additional diagnostic tests (RT-PCR, CT scan)
+                🔴 **COVID-19 Positive Indication**
+                - The trained model detected patterns consistent with COVID-19
+                - **Immediate action recommended:**
+                  - Consult healthcare professionals immediately
+                  - Consider RT-PCR confirmation
+                  - Follow isolation protocols
+                  - Monitor symptoms closely
                 """)
             else:
                 st.markdown("""
-                🟢 **COVID-19 Negative Indication (Demo)**
-                - The analysis suggests no obvious COVID-19 patterns
-                - This is a simulated result for demonstration
-                - In real use: Does not rule out other conditions
-                - Always consult healthcare professionals
+                🟢 **COVID-19 Negative Indication**
+                - The trained model suggests no obvious COVID-19 patterns
+                - **Important notes:**
+                  - Does not rule out other respiratory conditions
+                  - Clinical correlation always recommended
+                  - Consult healthcare professionals for complete evaluation
                 """)
             
-            # Additional metrics
-            st.markdown("### 📊 Real Model Performance")
+            # Performance metrics
+            st.markdown("### 📊 Model Performance")
             
             metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
             
             with metrics_col1:
-                st.metric("Sensitivity", "87.55%", help="Ability to correctly identify COVID-19 cases")
+                st.metric("Sensitivity", "87.55%", help="Correctly identifies COVID-19 cases")
             
             with metrics_col2:
-                st.metric("Specificity", "92.88%", help="Ability to correctly identify non-COVID cases")
+                st.metric("Specificity", "92.88%", help="Correctly identifies non-COVID cases")
             
             with metrics_col3:
-                st.metric("AUC-ROC", "96.69%", help="Overall discriminative ability")
-        
+                st.metric("Overall Accuracy", "91.97%", help="Overall model accuracy")
+                
         else:
-            st.info("👆 Upload an X-ray image and click 'Analyze' to see results here.")
+            st.info("👆 Upload an X-ray image and click 'Analyze' to see results")
             
-            # Sample information
-            st.markdown("### 🖼️ About This Demo")
+            # Model description
+            st.markdown("### 🤖 About the Model")
             st.markdown("""
-            This demo version:
-            - ✅ **Processes real images** you upload
-            - ✅ **Analyzes image characteristics** (intensity, contrast, etc.)
-            - ✅ **Generates realistic predictions** based on image features
-            - ✅ **Shows the complete interface** of the real application
-            - ⚠️ **Uses simulation**, not the actual trained model
+            **Your Trained Model:**
+            - **Architecture**: VGG16 with custom classifier layers
+            - **Training**: 21,000+ chest X-ray images
+            - **Classes**: COVID-19 vs Non-COVID (Normal, Viral Pneumonia, Lung Opacity)
+            - **Preprocessing**: 64×64 grayscale, normalized
+            - **Performance**: 91.97% accuracy, 96.69% AUC-ROC
             
-            **Real Model Features:**
-            - Trained on 21,000+ chest X-ray images
-            - 91.97% accuracy on test data
-            - VGG16 architecture with custom classifier
-            - Balanced dataset with SMOTE techniques
+            **Training Process:**
+            - Transfer learning from ImageNet-pretrained VGG16
+            - SMOTE balancing for class imbalance
+            - Data augmentation and regularization
+            - Adam optimizer with early stopping
             """)
     
-    # How to get real model section
-    st.markdown("---")
-    st.markdown("### 🔧 How to Run the Real Model")
-    
-    real_model_col1, real_model_col2 = st.columns(2)
-    
-    with real_model_col1:
-        st.markdown("""
-        **Option 1: Local Development**
-        1. Clone the repository
-        2. Install dependencies: `pip install -r requirements.txt`
-        3. Run locally: `streamlit run frontend/app.py`
-        4. Uses the actual trained model files
-        """)
-    
-    with real_model_col2:
-        st.markdown("""
-        **Option 2: Cloud Deployment**
-        1. Upload model to cloud storage (Google Drive, S3, etc.)
-        2. Update model loading URLs in code
-        3. Deploy to Streamlit Cloud with TensorFlow
-        4. Full functionality with real predictions
-        """)
-    
-    # Disclaimer
-    display_disclaimer()
+    # Medical disclaimer
+    st.markdown("""
+    <div class="warning-box">
+        <h4>⚠️ Medical Disclaimer</h4>
+        <p>This AI tool is for <strong>research and educational purposes only</strong>. 
+        It should <strong>NOT</strong> be used as a substitute for professional medical diagnosis. 
+        Always consult with qualified healthcare professionals for medical advice and treatment decisions.</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Footer
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #666;">
-        <p>🚀 <strong>Demo Version</strong> - Built with ❤️ using Streamlit | 
-        Real Model Accuracy: 91.97% | 
-        For Educational Use Only</p>
+        <p>🧠 Powered by Your Trained VGG16 Model | 
+        🎯 91.97% Accuracy | 
+        🏥 For Educational Use Only</p>
     </div>
     """, unsafe_allow_html=True)
 
