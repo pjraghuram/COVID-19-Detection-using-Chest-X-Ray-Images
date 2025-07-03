@@ -6,10 +6,6 @@ An AI-powered chest X-ray analysis tool for COVID-19 screening using deep learni
 
 This project uses a VGG16-based deep learning model to classify chest X-ray images and detect potential COVID-19 indicators. The model achieves **91.97% accuracy** with excellent sensitivity and specificity for medical screening applications.
 
-## 🚀 Live Demo
-
-**[Try the app here](https://covid-19-detection-using-chest-x-ray-images.streamlit.app/)** *(Update this link after deployment)*
-
 ## 📊 Model Performance
 
 - **Accuracy**: 91.97%
