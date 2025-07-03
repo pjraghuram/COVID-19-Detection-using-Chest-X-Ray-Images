@@ -1,21 +1,6 @@
-# COVID-19 X-Ray Classification - Demo Version
-# Works with Python 3.13.5 on Streamlit Cloud
-
-# Web Framework
+tensorflow>=2.8.0
 streamlit>=1.28.0
-
-# Core Data Science (no TensorFlow)
 numpy>=1.21.0
 pandas>=1.3.0
-scikit-learn>=1.0.0
 Pillow>=8.0.0
-
-# Visualization
 plotly>=5.0.0
-matplotlib>=3.5.0
-
-# Image Processing
-opencv-python-headless>=4.5.0
-
-# Basic ML (lightweight alternatives)
-joblib>=1.0.0
