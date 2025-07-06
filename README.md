@@ -24,7 +24,7 @@ This project uses a VGG16-based deep learning model to classify chest X-ray imag
 
 ## 🖼️ Dataset
 
-The model was trained on the COVID-19 Radiography Database containing:
+The model was trained on the COVID-19 Radiography(https://www.kaggle.com/datasets/penugondaraghuram/covid19-radiography-database) Database containing:
 - COVID-19 positive cases
 - Normal chest X-rays
 - Viral pneumonia cases
